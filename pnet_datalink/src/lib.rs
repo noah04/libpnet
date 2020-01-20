@@ -30,24 +30,20 @@ mod backend;
 #[cfg(windows)]
 pub mod winpcap;
 
-#[cfg(all(not(feature = "netmap"),
-          any(target_os = "linux",
-              target_os = "android"
-             )
-         )
-      )]
+#[cfg(all(
+    not(feature = "netmap"),
+    any(target_os = "linux", target_os = "android")
+))]
 #[path = "linux.rs"]
 mod backend;
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub mod linux;
 
-#[cfg(all(not(feature = "netmap"),
-          any(target_os = "freebsd",
-              target_os = "openbsd",
-              target_os = "macos")
-             )
-     )]
+#[cfg(all(
+    not(feature = "netmap"),
+    any(target_os = "freebsd", target_os = "openbsd", target_os = "macos")
+))]
 #[path = "bpf.rs"]
 mod backend;
 
@@ -233,7 +229,7 @@ impl NetworkInterface {
     pub fn mac_address(&self) -> MacAddr {
         self.mac.unwrap()
     }
-    
+
     pub fn is_up(&self) -> bool {
         self.flags & (pnet_sys::IFF_UP as u32) != 0
     }
@@ -268,7 +264,7 @@ impl ::std::fmt::Display for NetworkInterface {
                 "{:X}<{}>",
                 self.flags,
                 rets.iter()
-                    .zip(FLAGS.iter()) 
+                    .zip(FLAGS.iter())
                     .filter(|&(ret, _)| ret == &true)
                     .map(|(_, name)| name.to_string())
                     .collect::<Vec<String>>()
@@ -278,7 +274,8 @@ impl ::std::fmt::Display for NetworkInterface {
             format!("{:X}", self.flags)
         };
 
-        let mac = self.mac
+        let mac = self
+            .mac
             .map(|mac| mac.to_string())
             .unwrap_or("N/A".to_owned());
         let ips = if self.ips.len() > 0 {
@@ -311,6 +308,31 @@ impl ::std::fmt::Display for NetworkInterface {
 }
 
 /// Get a list of available network interfaces for the current machine.
+///
+/// If you need the default network interface, you can choose the first
+/// one that is up, not loopback and has an IP. This is not guaranteed to
+/// work on each system but should work for basic packet sniffing:
+///
+/// ```
+/// use pnet_datalink::interfaces;
+///
+/// // Get a vector with all network interfaces found
+/// let all_interfaces = interfaces();
+///
+/// // Search for the default interface - the one that is
+/// // up, not loopback and has an IP.
+/// let default_interface = all_interfaces
+///     .iter()
+///     .filter(|e| e.is_up() && !e.is_loopback() && e.ips.len() > 0)
+///     .next();
+///
+/// match default_interface {
+///     Some(interface) => println!("Found default interface with [{}].", interface.name),
+///     None => println!("Error while finding the default interface."),
+/// }
+///
+/// ```
+///
 pub fn interfaces() -> Vec<NetworkInterface> {
     backend::interfaces()
 }
